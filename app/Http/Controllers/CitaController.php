@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cita;
 use Illuminate\Http\Request;
 
 class CitaController extends Controller
 {
  public function index()
  {
-     // Logic to retrieve and display appointments
+   $citas = Cita::all();
+
+   if ($citas->isEmpty()) {
+       return response()->json(['message' => 'No hay citas registradas'], 404);
+   }
+   return response()->json($citas);
  }
 
  public function create()
@@ -18,7 +24,25 @@ class CitaController extends Controller
 
  public function store(Request $request)
  {
-     // Logic to store a new appointment
+    $request->validate([
+        'nombre_paciente'=>'required|string|max:255',
+        'cedula_paciente' => 'required|string|max:12',
+        'email_paciente' => 'nullable|email|max:255',
+        'telefono_paciente' => 'required|string|max:15',
+        'fecha_hora_cita' => 'required|date',
+        'motivo_cita' => 'nullable|string|max:255',
+        'estado' => 'nullable|string|in:pendiente,confirmada,cancelada',
+        'observaciones' => 'nullable|string|max:500',
+    ]);
+      $cita = Cita::create($request->all());
+
+    if (!$cita) {
+        return response()->json(['message' => 'Error al crear la cita'], 500);
+    }
+    return response()->json([
+        'message' => 'Cita creada exitosamente',
+        'data' => $cita
+    ], 201);
  }
     public function show($id)
     {
