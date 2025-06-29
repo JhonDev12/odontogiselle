@@ -25,8 +25,10 @@ return new class extends Migration
 
         // $table->unsignedBigInteger('odontologo_id')->nullable();
         // $table->foreign('odontologo_id')->references('id')->on('odontologos')->onDelete('set null');
+        
 
         $table->string('observaciones')->nullable();
+        $table->timestamp('cancelada_en')->nullable();
 
         $table->timestamps();
     });
