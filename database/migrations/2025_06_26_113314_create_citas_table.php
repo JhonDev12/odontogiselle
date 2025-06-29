@@ -19,7 +19,7 @@ return new class extends Migration
         $table->string('email_paciente')->nullable();
         $table->string('telefono_paciente');
 
-        $table->dateTime('fecha_hora_cita');
+        $table->dateTime('fecha_hora_cita')->nullable();
         $table->string('motivo_cita')->nullable();
         $table->string('estado')->default('pendiente');
 

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cita;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-
+use Illuminate\Support\Facades\Log; // arriba del archivo
 class CitaController extends Controller
 {
  public function index()
@@ -36,7 +36,8 @@ public function store(Request $request)
         'motivo_cita'        => 'nullable|string|max:255',
         'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
         'observaciones'      => 'nullable|string|max:500',
-        'cancelada_en' => 'nullable|date_format:Y-m-d H:i:s',
+       'cancelada_en' => 'nullable|date',
+
 
     ]);
 
@@ -110,7 +111,8 @@ public function update(Request $request, $id)
         'motivo_cita'        => 'nullable|string|max:255',
         'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
         'observaciones'      => 'nullable|string|max:500',
-        'cancelada_en'       => 'nullable|date_format:Y-m-d H:i:s',
+        'cancelada_en' => 'nullable|date',
+
     ]);
 
  
@@ -120,24 +122,33 @@ public function update(Request $request, $id)
         return response()->json(['message' => 'Cita no encontrada'], 404);
     }
 
-   // Cancelelación de cita
-    if (
-        $request->filled('estado') &&
-        $request->estado === 'cancelada' &&
-        $cita->estado !== 'cancelada'
-    ) {
+ if (
+    $request->has('estado') &&
+    $request->estado === 'cancelada' &&
+    $cita->estado !== 'cancelada'
+) {
+    try {
         $request->merge([
             'fecha_hora_cita' => null,
-            'cancelada_en'    => Carbon::now()->toDateTimeString()
+            'cancelada_en'    => \Carbon\Carbon::now()->toDateTimeString()
         ]);
 
-        $cita->update($request->all());
+        $cita->fill($request->all());
+        $cita->save();
 
         return response()->json([
             'message' => 'Cita cancelada exitosamente',
             'data'    => $cita->fresh()
         ]);
+    } catch (\Exception $e) {
+        Log::error('Error al cancelar cita: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Error interno al cancelar la cita',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     // Reprogramación de cita
     if ($request->filled('fecha_hora_cita') && $request->estado !== 'cancelada') {
         $nuevaFecha = Carbon::parse($request->fecha_hora_cita);
