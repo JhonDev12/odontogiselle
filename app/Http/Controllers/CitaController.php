@@ -23,9 +23,10 @@ class CitaController extends Controller
      // Logic to show form for creating a new appointment
  }
 
+
 public function store(Request $request)
 {
-   
+    // ✅ 1. Validación de campos
     $request->validate([
         'nombre_paciente'    => 'required|string|max:255',
         'cedula_paciente'    => 'required|string|max:12',
@@ -35,45 +36,58 @@ public function store(Request $request)
         'motivo_cita'        => 'nullable|string|max:255',
         'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
         'observaciones'      => 'nullable|string|max:500',
+        'cancelada_en' => 'nullable|date_format:Y-m-d H:i:s',
+
     ]);
 
+    // ✅ 2. Obtener fecha y hora de la cita
+    $fechaCompleta = Carbon::parse($request->fecha_hora_cita);
+    $fecha = $fechaCompleta->toDateString(); // Ej: 2025-06-28
+    $hora  = $fechaCompleta->format('H:i:s'); // Ej: 14:30:00
 
-    $fecha = Carbon::parse($request->fecha_hora_cita)->toDateString();
-    $hora  = Carbon::parse($request->fecha_hora_cita)->format('H:i:s');
+    // ✅ 3. Verificar si se intenta agendar en una fecha pasada
+    if ($fechaCompleta->lessThan(Carbon::now())) {
+        return response()->json([
+            'message' => 'No se puede agendar una cita en una fecha y hora pasada.'
+        ], 400); // 400 = solicitud incorrecta
+    }
 
- 
+    // ✅ 4. Verificar si ya hay una cita pendiente para esta cédula en ese mismo día
     $existeCitaParaCedula = Cita::where('cedula_paciente', $request->cedula_paciente)
+        ->where('estado', 'pendiente') // Solo pendientes
         ->whereDate('fecha_hora_cita', $fecha)
         ->exists();
 
     if ($existeCitaParaCedula) {
         return response()->json([
-            'message' => 'Ya existe una cita registrada para esta cédula en ese mismo día'
-        ], 409); 
+            'message' => 'Ya existe una cita pendiente para esta cédula en ese mismo día.'
+        ], 409); // 409 = conflicto
     }
 
- 
+    // ✅ 5. Verificar si ya hay una cita en ese horario (ignorando canceladas)
     $existeCitaEnMismoHorario = Cita::whereDate('fecha_hora_cita', $fecha)
         ->whereTime('fecha_hora_cita', $hora)
+        ->where('estado', '!=', 'cancelada')
         ->exists();
 
     if ($existeCitaEnMismoHorario) {
         return response()->json([
-            'message' => 'Ya hay una cita agendada en ese horario para la fecha seleccionada'
-        ], 409); 
+            'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
+        ], 409); // 409 = conflicto
     }
 
-    
+    // ✅ 6. Guardar la cita
     $cita = Cita::create($request->all());
 
     if (!$cita) {
         return response()->json(['message' => 'Error al crear la cita'], 500);
     }
 
+    // ✅ 7. Retornar éxito
     return response()->json([
         'message' => 'Cita creada exitosamente',
         'data' => $cita
-    ], 201); // Código 201: Creado exitosamente
+    ], 201); // 201 = creado
 }
 
 
@@ -82,10 +96,107 @@ public function store(Request $request)
         // Logic to display a specific appointment
     }
 
-    public function update(Request $request, $id)
-    {
-        // Logic to update a specific appointment
+
+
+public function update(Request $request, $id)
+{
+
+    $request->validate([
+        'nombre_paciente'    => 'sometimes|required|string|max:255',
+        'cedula_paciente'    => 'sometimes|required|string|max:12',
+        'email_paciente'     => 'nullable|email|max:255',
+        'telefono_paciente'  => 'sometimes|required|string|max:15',
+        'fecha_hora_cita'    => 'sometimes|nullable|date',
+        'motivo_cita'        => 'nullable|string|max:255',
+        'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
+        'observaciones'      => 'nullable|string|max:500',
+        'cancelada_en'       => 'nullable|date_format:Y-m-d H:i:s',
+    ]);
+
+ 
+    $cita = Cita::find($id);
+
+    if (!$cita) {
+        return response()->json(['message' => 'Cita no encontrada'], 404);
     }
+
+   // Cancelelación de cita
+    if (
+        $request->filled('estado') &&
+        $request->estado === 'cancelada' &&
+        $cita->estado !== 'cancelada'
+    ) {
+        $request->merge([
+            'fecha_hora_cita' => null,
+            'cancelada_en'    => Carbon::now()->toDateTimeString()
+        ]);
+
+        $cita->update($request->all());
+
+        return response()->json([
+            'message' => 'Cita cancelada exitosamente',
+            'data'    => $cita->fresh()
+        ]);
+    }
+    // Reprogramación de cita
+    if ($request->filled('fecha_hora_cita') && $request->estado !== 'cancelada') {
+        $nuevaFecha = Carbon::parse($request->fecha_hora_cita);
+        $fecha = $nuevaFecha->toDateString();
+        $hora  = $nuevaFecha->format('H:i:s');
+
+       
+        if ($nuevaFecha->lessThan(Carbon::now())) {
+            return response()->json([
+                'message' => 'No se puede reprogramar una cita a una fecha u hora pasada.'
+            ], 400);
+        }
+
+        // Observar que no aya una misma cita al mismo dia c
+        if ($request->filled('cedula_paciente')) {
+            $existeOtraCita = Cita::where('cedula_paciente', $request->cedula_paciente)
+                ->where('estado', 'pendiente')
+                ->whereDate('fecha_hora_cita', $fecha)
+                ->where('id', '!=', $cita->id)
+                ->exists();
+
+            if ($existeOtraCita) {
+                return response()->json([
+                    'message' => 'Ya existe otra cita pendiente para esta cédula en ese mismo día.'
+                ], 409);
+            }
+        }
+
+        // vaqlidad que no aya una cita a la missma hora
+        $horarioOcupado = Cita::whereDate('fecha_hora_cita', $fecha)
+            ->whereTime('fecha_hora_cita', $hora)
+            ->where('estado', '!=', 'cancelada')
+            ->where('id', '!=', $cita->id)
+            ->exists();
+
+        if ($horarioOcupado) {
+            return response()->json([
+                'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
+            ], 409);
+        }
+
+        // Formatear correctamente la nueva fecha/hora
+        $request->merge([
+            'fecha_hora_cita' => $nuevaFecha->toDateTimeString()
+        ]);
+    }
+
+ 
+    $cita->update($request->all());
+
+    return response()->json([
+        'message' => 'Cita actualizada exitosamente',
+        'data'    => $cita
+    ]);
+}
+
+
+
+
 
     public function destroy($id)
     {
