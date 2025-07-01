@@ -10,10 +10,10 @@ Route::get('/', function () {
     ]);
 });
 
-
-Route::get('citas', [CitaController::class, 'index']);
-
-Route::post('create', [CitaController::class, 'store']);
-
-Route::post('update/{id}', [CitaController::class, 'update']);
+Route::controller(CitaController::class)->group(function () {
+    Route::get('citas', 'index');
+    Route::post('create', 'store');
+    Route::post('update/{id}', 'update');
+    Route::post('delete/{id}', 'destroy');
+});
 

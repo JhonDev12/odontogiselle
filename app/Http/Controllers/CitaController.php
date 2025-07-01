@@ -6,6 +6,8 @@ use App\Models\Cita;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log; // arriba del archivo
+use Exception;
+
 class CitaController extends Controller
 {
  public function index()
@@ -26,7 +28,7 @@ class CitaController extends Controller
 
 public function store(Request $request)
 {
-    // ✅ 1. Validación de campos
+ 
     $request->validate([
         'nombre_paciente'    => 'required|string|max:255',
         'cedula_paciente'    => 'required|string|max:12',
@@ -41,31 +43,30 @@ public function store(Request $request)
 
     ]);
 
-    // ✅ 2. Obtener fecha y hora de la cita
+ 
     $fechaCompleta = Carbon::parse($request->fecha_hora_cita);
-    $fecha = $fechaCompleta->toDateString(); // Ej: 2025-06-28
-    $hora  = $fechaCompleta->format('H:i:s'); // Ej: 14:30:00
+    $fecha = $fechaCompleta->toDateString(); 
+    $hora  = $fechaCompleta->format('H:i:s'); 
 
-    // ✅ 3. Verificar si se intenta agendar en una fecha pasada
     if ($fechaCompleta->lessThan(Carbon::now())) {
         return response()->json([
             'message' => 'No se puede agendar una cita en una fecha y hora pasada.'
-        ], 400); // 400 = solicitud incorrecta
+        ], 400); 
     }
 
-    // ✅ 4. Verificar si ya hay una cita pendiente para esta cédula en ese mismo día
+   
     $existeCitaParaCedula = Cita::where('cedula_paciente', $request->cedula_paciente)
-        ->where('estado', 'pendiente') // Solo pendientes
+        ->where('estado', 'pendiente','confirmada') 
         ->whereDate('fecha_hora_cita', $fecha)
         ->exists();
 
     if ($existeCitaParaCedula) {
         return response()->json([
             'message' => 'Ya existe una cita pendiente para esta cédula en ese mismo día.'
-        ], 409); // 409 = conflicto
+        ], 409); 
     }
 
-    // ✅ 5. Verificar si ya hay una cita en ese horario (ignorando canceladas)
+
     $existeCitaEnMismoHorario = Cita::whereDate('fecha_hora_cita', $fecha)
         ->whereTime('fecha_hora_cita', $hora)
         ->where('estado', '!=', 'cancelada')
@@ -74,21 +75,21 @@ public function store(Request $request)
     if ($existeCitaEnMismoHorario) {
         return response()->json([
             'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
-        ], 409); // 409 = conflicto
+        ], 409);
     }
 
-    // ✅ 6. Guardar la cita
+  
     $cita = Cita::create($request->all());
 
     if (!$cita) {
         return response()->json(['message' => 'Error al crear la cita'], 500);
     }
 
-    // ✅ 7. Retornar éxito
+
     return response()->json([
         'message' => 'Cita creada exitosamente',
         'data' => $cita
-    ], 201); // 201 = creado
+    ], 201); 
 }
 
 
@@ -130,7 +131,7 @@ public function update(Request $request, $id)
     try {
         $request->merge([
             'fecha_hora_cita' => null,
-            'cancelada_en'    => \Carbon\Carbon::now()->toDateTimeString()
+            'cancelada_en'    =>Carbon::now()->toDateTimeString()
         ]);
 
         $cita->fill($request->all());
@@ -140,7 +141,7 @@ public function update(Request $request, $id)
             'message' => 'Cita cancelada exitosamente',
             'data'    => $cita->fresh()
         ]);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         Log::error('Error al cancelar cita: ' . $e->getMessage());
 
         return response()->json([
@@ -149,7 +150,7 @@ public function update(Request $request, $id)
         ], 500);
     }
 }
-    // Reprogramación de cita
+  
     if ($request->filled('fecha_hora_cita') && $request->estado !== 'cancelada') {
         $nuevaFecha = Carbon::parse($request->fecha_hora_cita);
         $fecha = $nuevaFecha->toDateString();
@@ -162,7 +163,7 @@ public function update(Request $request, $id)
             ], 400);
         }
 
-        // Observar que no aya una misma cita al mismo dia c
+        // Observar que no aya una misma cita al mismo dia 
         if ($request->filled('cedula_paciente')) {
             $existeOtraCita = Cita::where('cedula_paciente', $request->cedula_paciente)
                 ->where('estado', 'pendiente')
@@ -211,6 +212,17 @@ public function update(Request $request, $id)
 
     public function destroy($id)
     {
-        // Logic to delete a specific appointment
+            $cita = Cita::find($id);
+
+              if (!$cita) {
+        return response()->json([
+            'message' => 'Cita no encontrada'
+        ], 404); 
+    }
+      $cita->delete();
+
+        return response()->json([
+            'message' => 'Cita eliminada exitosamente'
+        ], 200); 
     }
 }
