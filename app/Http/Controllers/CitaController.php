@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cita;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log; // arriba del archivo
+use Illuminate\Support\Facades\Log; 
 use Illuminate\Support\Facades\Http;
 use Exception;
 
@@ -90,7 +90,7 @@ class CitaController extends Controller
 
             $mensaje = "Hola *{$request->nombre_paciente}*, tu cita ha sido agendada exitosamente para el día *{$fecha}* a las *{$hora}*. ¡Te esperamos!";
 
-            // Enviar mensaje a tu servidor Node (que usa Baileys)
+            // Enviar mensaje a al servidor de Node (que usa Baileys)
             $whatsappResponse = Http::post('http://127.0.0.1:3000/enviar-mensaje', [
                 'numero'  => $numeroDestino,
                 'mensaje' => $mensaje
@@ -145,7 +145,6 @@ public function update(Request $request, $id)
         return response()->json(['message' => 'Cita no encontrada'], 404);
     }
 
-    // ✅ Si se va a cancelar la cita
     if (
         $request->has('estado') &&
         $request->estado === 'cancelada' &&
@@ -188,7 +187,7 @@ public function update(Request $request, $id)
             ], 500);
         }
     }
-// ✅ Si pasa de cancelada a pendiente o confirmada (y quiere actualizar la fecha)
+
 if (
     $request->has('estado') &&
     in_array($request->estado, ['pendiente', 'confirmada']) &&
@@ -208,7 +207,7 @@ if (
 
         $request->merge([
             'fecha_hora_cita' => $nuevaFecha->toDateTimeString(),
-            'cancelada_en' => null // Limpia cancelación si la cita vuelve a estar activa
+            'cancelada_en' => null 
         ]);
 
         $cita->fill($request->all());
@@ -247,7 +246,6 @@ if (
     }
 }
 
-    // ✅ Si la cita se reprograma
     if ($request->filled('fecha_hora_cita') && $request->estado !== 'cancelada') {
         $nuevaFecha = Carbon::parse($request->fecha_hora_cita);
         $fecha = $nuevaFecha->toDateString();
@@ -320,7 +318,7 @@ if (
         }
     }
 
-    // ✅ Otras actualizaciones simples
+ 
     $cita->fill($request->all());
     $cita->save();
 
