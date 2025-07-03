@@ -21,4 +21,5 @@ Route::controller(CitaController::class)->group(function () {
 
 Route::controller(HistorialController::class)->group(function () {
     Route::get('historial/{cedula}', 'historialPorCedula');
+    Route::post('llenar-campos/{cedula}', 'llenarCamposPorCedula');
 });

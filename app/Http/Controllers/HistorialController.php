@@ -7,11 +7,66 @@ use Illuminate\Http\Request;
 
 class HistorialController extends Controller
 {
-    public function store(Request $request){
-        $request->validate([
-            'procedimiento' => 'nullable/required/text|max:800',
-        ])
-;    }
+ public function llenarCamposPorCedula(Request $request, $cedula)
+{
+   
+    $historial = Historial::where('cedula_paciente', $cedula)
+        ->orderBy('created_at', 'desc')
+        ->first();
+
+    // 2. Validar si existe ese historial
+    if (!$historial) {
+        return response()->json([
+            'message' => 'No se encontró historial clínico con esa cédula.'
+        ], 404);
+    }
+
+    // 3. Validar los campos que deseas permitir actualizar
+    $request->validate([
+        'procedimiento' => 'nullable|string|max:800',
+        'observaciones' => 'nullable|string|max:500',
+        'estado_procedimiento' => 'nullable|in:realizado,en progreso,pendiente',
+        'motivo_consulta' => 'nullable|string|max:500',
+        'antecedentes_personales' => 'nullable|string|max:500',
+        'antecedentes_familiares' => 'nullable|string|max:500',
+        'antecedentes_quirurgicos' => 'nullable|string|max:500',
+        'medicacion_actual' => 'nullable|string|max:500',
+        'alergias' => 'nullable|string|max:500',
+        'fuma' => 'nullable|boolean',
+        'consume_alcohol' => 'nullable|boolean',
+        'bruxismo' => 'nullable|boolean',
+        'higiene_oral' => 'nullable|string|max:500',
+        'examen_clinico' => 'nullable|string|max:500',
+        'diagnostico' => 'nullable|string|max:500',
+        'plan_tratamiento' => 'nullable|string|max:500',
+    ]);
+
+    // 4. Actualizar solo el último historial con los datos recibidos
+    $historial->update($request->only([
+        'procedimiento',
+        'observaciones',
+        'estado_procedimiento',
+        'motivo_consulta',
+        'antecedentes_personales',
+        'antecedentes_familiares',
+        'antecedentes_quirurgicos',
+        'medicacion_actual',
+        'alergias',
+        'fuma',
+        'consume_alcohol',
+        'bruxismo',
+        'higiene_oral',
+        'examen_clinico',
+        'diagnostico',
+        'plan_tratamiento'
+    ]));
+
+    return response()->json([
+        'message' => 'Último historial actualizado correctamente.',
+        'data' => $historial
+    ], 200);
+}
+
 
     public function historialPorCedula($cedula)
 {

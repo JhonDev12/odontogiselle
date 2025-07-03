@@ -73,7 +73,12 @@ class CitaController extends Controller
                 'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
             ], 409);
         }
+        if($request->estado === 'cancelada') {
+            return response()->json([
+                'message' => 'Error al crear la cita. No se puede crear una cita con estado "cancelada". Por favor, elige otro estado.'
+            ], 400);
 
+        }
         try {
 
             $cita = Cita::create($request->all());
