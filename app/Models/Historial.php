@@ -12,5 +12,8 @@ class Historial extends Model
    protected $guarded = []; 
 
 
-
+ public function pagos()
+    {
+        return $this->hasMany(pagos::class); // Relación 1 a muchos
+    }
 }

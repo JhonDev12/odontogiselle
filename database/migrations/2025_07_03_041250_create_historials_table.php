@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+public function up()
 {
     Schema::create('historials', function (Blueprint $table) {
         $table->id();
@@ -26,6 +26,23 @@ return new class extends Migration
         $table->text('procedimiento')->nullable();         
         $table->text('observaciones')->nullable();        
         $table->enum('estado_procedimiento', ['realizado', 'en progreso', 'pendiente'])->nullable();
+
+      
+        $table->text('motivo_consulta')->nullable();
+        $table->text('antecedentes_personales')->nullable();
+        $table->text('antecedentes_familiares')->nullable();
+        $table->text('antecedentes_quirurgicos')->nullable();
+        $table->text('medicacion_actual')->nullable();
+        $table->text('alergias')->nullable();
+
+        $table->boolean('fuma')->default(false);
+        $table->boolean('consume_alcohol')->default(false);
+        $table->boolean('bruxismo')->default(false);
+        $table->text('higiene_oral')->nullable(); 
+
+        $table->text('examen_clinico')->nullable();
+        $table->text('diagnostico')->nullable();
+        $table->text('plan_tratamiento')->nullable();
 
         $table->timestamps();
     });

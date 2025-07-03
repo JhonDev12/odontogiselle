@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 class HistorialController extends Controller
 {
     public function store(Request $request){
-
-    }
+        $request->validate([
+            'procedimiento' => 'nullable/required/text|max:800',
+        ])
+;    }
 
     public function historialPorCedula($cedula)
 {
