@@ -219,7 +219,7 @@ public function update(Request $request, $id)
     'fecha_cita'            => $cita->fecha_hora_cita ? Carbon::parse($cita->fecha_hora_cita)->toDateString() : now()->toDateString(),
     'hora_cita'             => $cita->fecha_hora_cita ? Carbon::parse($cita->fecha_hora_cita)->format('H:i:s') : now()->format('H:i:s'),
     'estado_cita'           => $cita->estado,
-    'procedimiento'         => null, // Lo llenará el odontólogo después
+    'procedimiento'         => null, 
     'observaciones'         => $cita->observaciones,
     'estado_procedimiento'  => null
 ]);

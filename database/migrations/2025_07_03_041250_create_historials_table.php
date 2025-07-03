@@ -23,8 +23,8 @@ return new class extends Migration
         $table->time('hora_cita');
         $table->enum('estado_cita', ['pendiente', 'confirmada', 'cancelada'])->default('pendiente');
 
-        $table->text('procedimiento')->nullable();         // Aquí el odontólogo puede escribir lo que se le hizo
-        $table->text('observaciones')->nullable();         // Observaciones generales
+        $table->text('procedimiento')->nullable();         
+        $table->text('observaciones')->nullable();        
         $table->enum('estado_procedimiento', ['realizado', 'en progreso', 'pendiente'])->nullable();
 
         $table->timestamps();
