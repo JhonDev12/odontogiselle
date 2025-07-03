@@ -14,14 +14,14 @@ class HistorialController extends Controller
         ->orderBy('created_at', 'desc')
         ->first();
 
-    // 2. Validar si existe ese historial
+   
     if (!$historial) {
         return response()->json([
             'message' => 'No se encontró historial clínico con esa cédula.'
         ], 404);
     }
 
-    // 3. Validar los campos que deseas permitir actualizar
+   
     $request->validate([
         'procedimiento' => 'nullable|string|max:800',
         'observaciones' => 'nullable|string|max:500',
@@ -41,7 +41,7 @@ class HistorialController extends Controller
         'plan_tratamiento' => 'nullable|string|max:500',
     ]);
 
-    // 4. Actualizar solo el último historial con los datos recibidos
+    
     $historial->update($request->only([
         'procedimiento',
         'observaciones',
