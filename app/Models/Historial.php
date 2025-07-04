@@ -14,6 +14,6 @@ class Historial extends Model
 
  public function pagos()
     {
-        return $this->hasMany(pagos::class); // Relación 1 a muchos
+        return $this->hasMany(Pago::class); // Relación 1 a muchos
     }
 }

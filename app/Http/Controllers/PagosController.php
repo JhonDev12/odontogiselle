@@ -2,14 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\pagos;
+use App\Models\Pago;
 use Illuminate\Http\Request;
 
 class PagosController extends Controller
 {
-    public function historialPorCedula($cedula)
+
+
+    public function index (Request  $pagos)
     {
-        $pagos = pagos::where('cedula_paciente', $cedula)
+        $pagos = Pago::all();
+        return response()->json([
+            'message' => 'Lista de pagos obtenida correctamente.',
+            'data' => $pagos
+        ], 200);
+
+
+
+    }
+
+
+   public function historialPagos($cedula)
+{
+    try {
+        $pagos = Pago::whereHas('historial', function ($query) use ($cedula) {
+                $query->where('cedula_paciente', $cedula);
+            })
             ->orderBy('fecha_pago', 'desc')
             ->get();
 
@@ -24,5 +42,12 @@ class PagosController extends Controller
             'message' => 'Historial de pagos encontrado.',
             'data' => $pagos
         ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error interno al consultar los pagos.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 }

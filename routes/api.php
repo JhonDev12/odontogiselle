@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\HistorialController;
+use App\Http\Controllers\PagosController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -22,4 +23,10 @@ Route::controller(CitaController::class)->group(function () {
 Route::controller(HistorialController::class)->group(function () {
     Route::get('historial/{cedula}', 'historialPorCedula');
     Route::post('llenar-campos/{cedula}', 'llenarCamposPorCedula');
+});
+
+Route::controller(PagosController::class)->group(function () {
+    Route::get('pagos/{cedula}', 'historialPagos');
+    Route::get('pagos', 'index');
+    // Puedes agregar más rutas relacionadas con pagos aquí
 });
