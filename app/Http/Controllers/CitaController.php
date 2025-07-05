@@ -29,7 +29,7 @@ class CitaController extends Controller
     }
 
 
-   public function store(Request $request)
+public function store(Request $request)
 {
     $request->validate([
         'nombre_paciente'    => 'required|string|max:255',
@@ -53,7 +53,7 @@ class CitaController extends Controller
         ], 400);
     }
 
-    // Validar si el paciente ya tiene una cita ese día **a esa misma hora**
+    // Verifica si ya existe una cita en esa fecha y hora para esa cédula
     $existeCitaParaCedula = Cita::where('cedula_paciente', $request->cedula_paciente)
         ->whereIn('estado', ['pendiente', 'confirmada'])
         ->whereDate('fecha_hora_cita', $fecha)
@@ -66,7 +66,7 @@ class CitaController extends Controller
         ], 409);
     }
 
-    // Validar si ese horario ya está ocupado por otra persona
+    // Verifica si otra persona ya tiene cita en ese horario
     $existeCitaEnMismoHorario = Cita::whereDate('fecha_hora_cita', $fecha)
         ->whereTime('fecha_hora_cita', $hora)
         ->where('estado', '!=', 'cancelada')
@@ -85,36 +85,59 @@ class CitaController extends Controller
     }
 
     try {
+        // Crear la cita
         $cita = Cita::create($request->all());
 
-        // Crear historial
-        $historial = Historial::create([
-            'cedula_paciente'       => $cita->cedula_paciente,
-            'nombre_paciente'       => $cita->nombre_paciente,
-            'telefono_paciente'     => $cita->telefono_paciente,
-            'email_paciente'        => $cita->email_paciente,
-            'fecha_cita'            => $fecha,
-            'hora_cita'             => $hora,
-            'estado_cita'           => $cita->estado,
-            'procedimiento'         => null,
-            'observaciones'         => $cita->observaciones,
-            'estado_procedimiento'  => null,
-            'motivo_consulta'       => null,
-            'antecedentes_personales' => null,
-            'antecedentes_familiares' => null,
-            'antecedentes_quirurgicos' => null,
-            'medicacion_actual'     => null,
-            'alergias'              => null,
-            'fuma'                  => false,
-            'consume_alcohol'       => false,
-            'bruxismo'              => false,
-            'higiene_oral'          => null,
-            'examen_clinico'        => null,
-            'diagnostico'           => null,
-            'plan_tratamiento'      => null,
-        ]);
+        // Verificar historial anterior
+        $ultimoHistorial = Historial::where('cedula_paciente', $cita->cedula_paciente)
+            ->latest()
+            ->first();
 
-        // Registrar pago si no existe
+        $esGenerico = $ultimoHistorial &&
+            $ultimoHistorial->nombre_paciente === 'Nombre no disponible' &&
+            $ultimoHistorial->telefono_paciente === '0000000000' &&
+            $ultimoHistorial->estado_cita === 'pendiente';
+
+        // Si el historial es genérico y coincide en fecha y hora, actualízalo
+        if ($esGenerico && $ultimoHistorial->fecha_cita === $fecha && $ultimoHistorial->hora_cita === $hora) {
+            $ultimoHistorial->update([
+                'nombre_paciente'   => $cita->nombre_paciente,
+                'telefono_paciente' => $cita->telefono_paciente,
+                'email_paciente'    => $cita->email_paciente,
+                'estado_cita'       => $cita->estado,
+                'observaciones'     => $cita->observaciones
+            ]);
+            $historial = $ultimoHistorial;
+        } else {
+            // Si no, crea uno nuevo
+            $historial = Historial::create([
+                'cedula_paciente'         => $cita->cedula_paciente,
+                'nombre_paciente'         => $cita->nombre_paciente,
+                'telefono_paciente'       => $cita->telefono_paciente,
+                'email_paciente'          => $cita->email_paciente,
+                'fecha_cita'              => $fecha,
+                'hora_cita'               => $hora,
+                'estado_cita'             => $cita->estado,
+                'procedimiento'           => null,
+                'observaciones'           => $cita->observaciones,
+                'estado_procedimiento'    => null,
+                'motivo_consulta'         => null,
+                'antecedentes_personales' => null,
+                'antecedentes_familiares' => null,
+                'antecedentes_quirurgicos'=> null,
+                'medicacion_actual'       => null,
+                'alergias'                => null,
+                'fuma'                    => false,
+                'consume_alcohol'         => false,
+                'bruxismo'                => false,
+                'higiene_oral'            => null,
+                'examen_clinico'          => null,
+                'diagnostico'             => null,
+                'plan_tratamiento'        => null,
+            ]);
+        }
+
+        // Crear el pago si no existe
         $yaTienePago = Pago::where('cedula_paciente', $cita->cedula_paciente)->exists();
 
         if (!$yaTienePago) {
@@ -128,7 +151,7 @@ class CitaController extends Controller
             ]);
         }
 
-        // WhatsApp
+        // Enviar WhatsApp
         $numeroDestino = preg_replace('/\D/', '', $request->telefono_paciente);
         $numeroDestino = '57' . ltrim($numeroDestino, '0');
 
@@ -162,7 +185,7 @@ class CitaController extends Controller
         Log::error('Error al guardar cita o historial o enviar WhatsApp: ' . $e->getMessage());
         return response()->json([
             'message' => 'Error al crear la cita.',
-            'error' => $e->getMessage()
+            'error'   => $e->getMessage()
         ], 500);
     }
 }
@@ -244,7 +267,6 @@ class CitaController extends Controller
                 }
             }
 
-            // Guardar la cita
             $cita->fill($request->all());
             $cita->save();
 

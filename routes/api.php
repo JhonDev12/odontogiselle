@@ -28,5 +28,5 @@ Route::controller(HistorialController::class)->group(function () {
 Route::controller(PagosController::class)->group(function () {
     Route::get('pagos/{cedula}', 'historialPagos');
     Route::get('pagos', 'index');
-    // Puedes agregar más rutas relacionadas con pagos aquí
+    Route::post('nuevos/{cedula}', 'store');
 });
