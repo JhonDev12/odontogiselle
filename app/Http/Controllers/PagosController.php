@@ -16,9 +16,6 @@ class PagosController extends Controller
             'message' => 'Lista de pagos obtenida correctamente.',
             'data' => $pagos
         ], 200);
-
-
-
     }
 
 
