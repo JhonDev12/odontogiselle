@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cita;
 use App\Models\Historial;
+use App\Models\Pago;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -28,127 +29,145 @@ class CitaController extends Controller
     }
 
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'nombre_paciente'    => 'required|string|max:255',
-            'cedula_paciente'    => 'required|string|max:12',
-            'email_paciente'     => 'nullable|email|max:255',
-            'telefono_paciente'  => 'required|string|max:15',
-            'fecha_hora_cita'    => 'required|date',
-            'motivo_cita'        => 'nullable|string|max:255',
-            'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
-            'observaciones'      => 'nullable|string|max:500',
-            'cancelada_en'       => 'nullable|date',
-        ]);
+   public function store(Request $request)
+{
+    $request->validate([
+        'nombre_paciente'    => 'required|string|max:255',
+        'cedula_paciente'    => 'required|string|max:12',
+        'email_paciente'     => 'nullable|email|max:255',
+        'telefono_paciente'  => 'required|string|max:15',
+        'fecha_hora_cita'    => 'required|date',
+        'motivo_cita'        => 'nullable|string|max:255',
+        'estado'             => 'nullable|string|in:pendiente,confirmada,cancelada',
+        'observaciones'      => 'nullable|string|max:500',
+        'cancelada_en'       => 'nullable|date',
+    ]);
 
-        $fechaCompleta = Carbon::parse($request->fecha_hora_cita);
-        $fecha = $fechaCompleta->toDateString();
-        $hora  = $fechaCompleta->format('H:i:s');
+    $fechaCompleta = Carbon::parse($request->fecha_hora_cita);
+    $fecha = $fechaCompleta->toDateString();
+    $hora  = $fechaCompleta->format('H:i:s');
 
-        if ($fechaCompleta->lessThan(now())) {
-            return response()->json([
-                'message' => 'No se puede agendar una cita en una fecha y hora pasada.'
-            ], 400);
-        }
-
-        $existeCitaParaCedula = Cita::where('cedula_paciente', $request->cedula_paciente)
-            ->whereIn('estado', ['pendiente', 'confirmada'])
-            ->whereDate('fecha_hora_cita', $fecha)
-            ->exists();
-
-        if ($existeCitaParaCedula) {
-            return response()->json([
-                'message' => 'Ya existe una cita pendiente o confirmada para esta cédula en ese mismo día.'
-            ], 409);
-        }
-
-        $existeCitaEnMismoHorario = Cita::whereDate('fecha_hora_cita', $fecha)
-            ->whereTime('fecha_hora_cita', $hora)
-            ->where('estado', '!=', 'cancelada')
-            ->exists();
-
-        if ($existeCitaEnMismoHorario) {
-            return response()->json([
-                'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
-            ], 409);
-        }
-        if($request->estado === 'cancelada') {
-            return response()->json([
-                'message' => 'Error al crear la cita. No se puede crear una cita con estado "cancelada". Por favor, elige otro estado.'
-            ], 400);
-
-        }
-        try {
-
-            $cita = Cita::create($request->all());
-
-            // Registro en historial médico
-            Historial::create([
-                'cedula_paciente'       => $cita->cedula_paciente,
-                'nombre_paciente'       => $cita->nombre_paciente,
-                'telefono_paciente'     => $cita->telefono_paciente,
-                'email_paciente'        => $cita->email_paciente,
-                'fecha_cita'            => $cita->fecha_hora_cita ? Carbon::parse($cita->fecha_hora_cita)->toDateString() : now()->toDateString(),
-                'hora_cita'             => $cita->fecha_hora_cita ? Carbon::parse($cita->fecha_hora_cita)->format('H:i:s') : now()->format('H:i:s'),
-                'estado_cita'           => $cita->estado,
-                'procedimiento'         => null,
-                'observaciones'         => $cita->observaciones,
-                'estado_procedimiento'  => null,
-                'motivo_consulta'       => null,
-                'antecedentes_personales' => null,
-                'antecedentes_familiares' => null,
-                'antecedentes_quirurgicos' => null,
-                'medicacion_actual'     => null,
-                'alergias'              => null,
-                'fuma'                  => false,
-                'consume_alcohol'       => false,
-                'bruxismo'              => false,
-                'higiene_oral'          => null,
-                'examen_clinico'        => null,
-                'diagnostico'           => null,
-                'plan_tratamiento'      => null,
-            ]);
-
-            // Preparar número para WhatsApp
-            $numeroDestino = preg_replace('/\D/', '', $request->telefono_paciente);
-            $numeroDestino = '57' . ltrim($numeroDestino, '0');
-
-            if (strlen($numeroDestino) < 10 || strlen($numeroDestino) > 15) {
-                return response()->json([
-                    'message' => 'Número de teléfono inválido.'
-                ], 400);
-            }
-
-            // Enviar mensaje
-            $mensaje = "Hola *{$request->nombre_paciente}*, tu cita ha sido agendada exitosamente para el día *{$fecha}* a las *{$hora}*. ¡Te esperamos!";
-
-            $whatsappResponse = Http::post('http://127.0.0.1:3000/enviar-mensaje', [
-                'numero'  => $numeroDestino,
-                'mensaje' => $mensaje
-            ]);
-
-            if ($whatsappResponse->successful()) {
-                return response()->json([
-                    'message' => 'Cita creada y mensaje enviado por WhatsApp.',
-                    'data'    => $cita
-                ], 201);
-            } else {
-                return response()->json([
-                    'message' => 'Cita creada, pero no se pudo enviar el mensaje por WhatsApp.',
-                    'data'    => $cita,
-                    'error'   => $whatsappResponse->json()
-                ], 207);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error al guardar cita o historial o enviar WhatsApp: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al crear la cita.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    if ($fechaCompleta->lessThan(now())) {
+        return response()->json([
+            'message' => 'No se puede agendar una cita en una fecha y hora pasada.'
+        ], 400);
     }
 
+    // Validar si el paciente ya tiene una cita ese día **a esa misma hora**
+    $existeCitaParaCedula = Cita::where('cedula_paciente', $request->cedula_paciente)
+        ->whereIn('estado', ['pendiente', 'confirmada'])
+        ->whereDate('fecha_hora_cita', $fecha)
+        ->whereTime('fecha_hora_cita', $hora)
+        ->exists();
+
+    if ($existeCitaParaCedula) {
+        return response()->json([
+            'message' => 'Ya tienes una cita registrada para ese mismo día y hora.'
+        ], 409);
+    }
+
+    // Validar si ese horario ya está ocupado por otra persona
+    $existeCitaEnMismoHorario = Cita::whereDate('fecha_hora_cita', $fecha)
+        ->whereTime('fecha_hora_cita', $hora)
+        ->where('estado', '!=', 'cancelada')
+        ->exists();
+
+    if ($existeCitaEnMismoHorario) {
+        return response()->json([
+            'message' => 'Ese horario ya está ocupado. Elige otro diferente.'
+        ], 409);
+    }
+
+    if ($request->estado === 'cancelada') {
+        return response()->json([
+            'message' => 'No se puede crear una cita con estado "cancelada".'
+        ], 400);
+    }
+
+    try {
+        $cita = Cita::create($request->all());
+
+        // Crear historial
+        $historial = Historial::create([
+            'cedula_paciente'       => $cita->cedula_paciente,
+            'nombre_paciente'       => $cita->nombre_paciente,
+            'telefono_paciente'     => $cita->telefono_paciente,
+            'email_paciente'        => $cita->email_paciente,
+            'fecha_cita'            => $fecha,
+            'hora_cita'             => $hora,
+            'estado_cita'           => $cita->estado,
+            'procedimiento'         => null,
+            'observaciones'         => $cita->observaciones,
+            'estado_procedimiento'  => null,
+            'motivo_consulta'       => null,
+            'antecedentes_personales' => null,
+            'antecedentes_familiares' => null,
+            'antecedentes_quirurgicos' => null,
+            'medicacion_actual'     => null,
+            'alergias'              => null,
+            'fuma'                  => false,
+            'consume_alcohol'       => false,
+            'bruxismo'              => false,
+            'higiene_oral'          => null,
+            'examen_clinico'        => null,
+            'diagnostico'           => null,
+            'plan_tratamiento'      => null,
+        ]);
+
+        // Registrar pago si no existe
+        $yaTienePago = Pago::where('cedula_paciente', $cita->cedula_paciente)->exists();
+
+        if (!$yaTienePago) {
+            Pago::create([
+                'cedula_paciente' => $cita->cedula_paciente,
+                'historial_id'    => $historial->id,
+                'monto'           => 0.00,
+                'fecha_pago'      => now()->toDateString(),
+                'detalle'         => 'Pago por cita agendada',
+                'metodo_pago'     => null
+            ]);
+        }
+
+        // WhatsApp
+        $numeroDestino = preg_replace('/\D/', '', $request->telefono_paciente);
+        $numeroDestino = '57' . ltrim($numeroDestino, '0');
+
+        if (strlen($numeroDestino) < 10 || strlen($numeroDestino) > 15) {
+            return response()->json([
+                'message' => 'Número de teléfono inválido.'
+            ], 400);
+        }
+
+        $mensaje = "Hola *{$request->nombre_paciente}*, tu cita ha sido agendada exitosamente para el día *{$fecha}* a las *{$hora}*. ¡Te esperamos!";
+
+        $whatsappResponse = Http::post('http://127.0.0.1:3000/enviar-mensaje', [
+            'numero'  => $numeroDestino,
+            'mensaje' => $mensaje
+        ]);
+
+        if ($whatsappResponse->successful()) {
+            return response()->json([
+                'message' => 'Cita creada y mensaje enviado por WhatsApp.',
+                'data'    => $cita
+            ], 201);
+        } else {
+            return response()->json([
+                'message' => 'Cita creada, pero no se pudo enviar el mensaje por WhatsApp.',
+                'data'    => $cita,
+                'error'   => $whatsappResponse->json()
+            ], 207);
+        }
+
+    } catch (\Exception $e) {
+        Log::error('Error al guardar cita o historial o enviar WhatsApp: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'Error al crear la cita.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+    
 
 
 
@@ -204,8 +223,10 @@ class CitaController extends Controller
                     $existeOtraCita = Cita::where('cedula_paciente', $request->cedula_paciente)
                         ->whereIn('estado', ['pendiente', 'confirmada'])
                         ->whereDate('fecha_hora_cita', $fecha)
+                        ->whereTime('fecha_hora_cita', $hora)
                         ->where('id', '!=', $cita->id)
                         ->exists();
+
 
                     if ($existeOtraCita) {
                         return response()->json(['message' => 'Ya existe otra cita para esa cédula ese día.'], 409);

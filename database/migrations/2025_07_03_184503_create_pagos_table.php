@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('pagos', function (Blueprint $table) {
             $table->id();
+            $table->string('cedula_paciente', 20)->index();
             $table->foreignId('historial_id')->constrained('historials')->onDelete('cascade');
             $table->decimal('monto', 10, 2);
             $table->date('fecha_pago');
