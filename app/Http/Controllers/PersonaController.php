@@ -6,6 +6,7 @@ use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class PersonaController extends Controller
 {
@@ -67,12 +68,14 @@ class PersonaController extends Controller
             ]);
 
 
-            $usuario = User::create([
-                'email'       => $request->email,
-                'password'    => Hash::make($request->numero_documento),
-                'persona_id'  => $persona->id,
-                'rol_id'      => 1,
-            ]);
+          $usuario = User::create([
+    'name'        => $request->nombres . ' ' . $request->apellidos, // 👈 Esto es obligatorio
+    'email'       => $request->email,
+    'password'    => Hash::make($request->numero_documento),
+    'persona_id'  => $persona->id,
+    'rol_id'      => 1,
+]);
+
 
             return response()->json([
                 'message' => 'Persona y usuario creados exitosamente.',
@@ -87,34 +90,65 @@ class PersonaController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        $persona = Persona::find($id);
+public function update(Request $request, $id)
+{
+    $persona = Persona::with('user')->find($id); // 🔁 Se asegura de cargar el user relacionado
 
-        if (!$persona) {
-            return response()->json([
-                'message' => 'Persona no encontrada.'
-            ], 404);
+    if (!$persona) {
+        return response()->json([
+            'message' => 'Persona no encontrada.'
+        ], 404);
+    }
+
+    $request->validate([
+        'nombres'          => 'sometimes|string|max:100',
+        'apellidos'        => 'sometimes|string|max:100',
+        'tipo_documento'   => 'sometimes|string|max:5',
+        'numero_documento' => 'sometimes|string|max:20|unique:personas,numero_documento,' . $id,
+        'fecha_nacimiento' => 'nullable|date',
+        'telefono'         => 'nullable|string|max:20',
+        'direccion'        => 'nullable|string|max:150',
+        'email'            => [
+            'sometimes',
+            'email',
+            'max:100',
+            Rule::unique('users', 'email')->ignore(optional($persona->user)->id),
+        ],
+    ]);
+
+    try {
+        // 🔁 Actualizar la persona
+        $persona->update($request->only([
+            'nombres', 'apellidos', 'tipo_documento',
+            'numero_documento', 'fecha_nacimiento',
+            'telefono', 'direccion', 'email'
+        ]));
+
+        // 🔁 Actualizar el usuario relacionado
+        if ($persona->user) {
+            $persona->user->update([
+                'name'     => $request->nombres && $request->apellidos
+                    ? $request->nombres . ' ' . $request->apellidos
+                    : $persona->user->name,
+                'email'    => $request->email ?? $persona->user->email,
+                'password' => $request->filled('numero_documento')
+                    ? Hash::make($request->numero_documento)
+                    : $persona->user->password,
+            ]);
         }
 
-        $request->validate([
-            'nombres'          => 'sometimes|string|max:100',
-            'apellidos'        => 'sometimes|string|max:100',
-            'tipo_documento'   => 'sometimes|string|max:5',
-            'numero_documento' => 'sometimes|string|max:20|unique:personas,numero_documento,' . $id,
-            'fecha_nacimiento' => 'nullable|date',
-            'telefono'         => 'nullable|string|max:20',
-            'direccion'        => 'nullable|string|max:150',
-            'email'            => 'sometimes|email|max:100|unique:personas,email,' . $id,
-        ]);
-
-        $persona->update($request->all());
-
         return response()->json([
-            'message' => 'Persona actualizada correctamente.',
+            'message' => 'Persona y usuario actualizados correctamente.',
             'data'    => $persona
         ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error al actualizar la persona y usuario.',
+            'error'   => $e->getMessage()
+        ], 500);
     }
+}
     public function destroy($id)
     {
         $persona = Persona::find($id);

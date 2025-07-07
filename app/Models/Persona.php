@@ -9,8 +9,12 @@ class Persona extends Model
 {
     protected $guarded = [];
 
-    public function user(): HasOne
+   public function user()
+{
+    return $this->hasOne(User::class, 'persona_id');
+}
+    public function rol()
     {
-        return $this->hasOne(User::class);
-    }
+     return $this->hasOne(Rol::class, 'persona_id');
+}
 }
