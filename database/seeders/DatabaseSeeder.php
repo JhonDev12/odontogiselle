@@ -16,11 +16,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-      // Crear rol
+        // Crear rol
         $rol = Rol::firstOrCreate([
             'nombre' => 'Administrador'
         ], [
             'descripcion' => 'Rol con todos los permisos',
+            'activo' => true
+        ]);
+        $rol = Rol::firstOrCreate([
+            'nombre' => 'Usuario comun'
+        ], [
+            'descripcion' => 'Rol para usuerios recien creados y sin roles asignados',
             'activo' => true
         ]);
 
@@ -37,11 +43,11 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@demo.com',
         ]);
 
-        // Crear usuario (sin 'name')
+
         User::create([
-             'name' => 'Administrador',
+            'name' => 'Administrador',
             'email' => 'admin@demo.com',
-            'password' => Hash::make('1234567890'), // la cédula como contraseña
+            'password' => Hash::make('1234567890'),
             'persona_id' => $persona->id,
             'rol_id' => $rol->id,
         ]);
