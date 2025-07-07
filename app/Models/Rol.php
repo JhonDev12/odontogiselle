@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Rol extends Model
     {
 
-        protected $guarded = [];
+       protected $table = 'roles'; 
 
-     public function users(): HasMany
+    protected $guarded = [];
+
+    public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }

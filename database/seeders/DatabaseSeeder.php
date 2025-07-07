@@ -2,9 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Persona;
+use App\Models\Rol;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,11 +16,34 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+      // Crear rol
+        $rol = Rol::firstOrCreate([
+            'nombre' => 'Administrador'
+        ], [
+            'descripcion' => 'Rol con todos los permisos',
+            'activo' => true
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Crear persona
+        $persona = Persona::firstOrCreate([
+            'numero_documento' => '1234567890',
+        ], [
+            'nombres' => 'Admin',
+            'apellidos' => 'Demo',
+            'tipo_documento' => 'CC',
+            'fecha_nacimiento' => '1990-01-01',
+            'telefono' => '3001234567',
+            'direccion' => 'Calle falsa 123',
+            'email' => 'admin@demo.com',
+        ]);
+
+        // Crear usuario (sin 'name')
+        User::create([
+             'name' => 'Administrador',
+            'email' => 'admin@demo.com',
+            'password' => Hash::make('1234567890'), // la cédula como contraseña
+            'persona_id' => $persona->id,
+            'rol_id' => $rol->id,
         ]);
     }
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\PagosController;
+use App\Http\Controllers\PersonaController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -29,4 +30,12 @@ Route::controller(PagosController::class)->group(function () {
     Route::get('pagos/{cedula}', 'historialPagos');
     Route::get('pagos', 'index');
     Route::post('nuevos/{cedula}', 'store');
+});
+
+
+Route::controller(PersonaController::class)->group(function () {
+    Route::get('personas', 'index');
+    Route::post('crear/persona', 'store');
+    Route::post('actualizar/{id}', 'update');
+    Route::post('eliminar/{id}', 'destroy');
 });
