@@ -15,7 +15,7 @@ Route::get('/', function () {
         'message' => 'La API está funcionando correctamente'
     ]);
 });
-Route::middleware('auth:sanctum')->group(function () {
+
     Route::controller(CitaController::class)->group(function () {
         Route::get('citas', 'index');
         Route::post('create', 'store');
@@ -55,7 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('usuarios', 'index');
         Route::post('actualizar/rol/usuario/{id}', 'actualizarRol');
     });
-
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 });
 Route::post('login', [AuthController::class, 'login']);
