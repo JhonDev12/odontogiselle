@@ -10,7 +10,7 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-       
+
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
@@ -22,10 +22,23 @@ class AuthController extends Controller
             return response()->json(['message' => 'Credenciales incorrectas.'], 401);
         }
 
+        $token = $user->createToken('token-api')->plainTextToken;
+
         return response()->json([
             'message' => 'Inicio de sesión exitoso.',
             'user'    => $user,
+            'token'   => $token,
             'rol'     => $user->rol_id
         ]);
     }
+
+    public function logout(Request $request)
+    {
+        $request->user()->tokens()->delete(); 
+
+        return response()->json([
+            'message' => 'Sesión cerrada correctamente.'
+        ]);
+    }
+
 }
