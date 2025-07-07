@@ -139,6 +139,23 @@ public function store(Request $request, $cedula)
         ], 500);
     }
 }
+    public function destroy($id)
+    {
+        try {
+            $pago = Pago::findOrFail($id);
+            $pago->delete();
 
+            return response()->json([
+                'message' => 'Pago eliminado correctamente.'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar pago: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Ocurrió un error al eliminar el pago.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

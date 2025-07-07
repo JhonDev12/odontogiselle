@@ -30,6 +30,7 @@ Route::controller(PagosController::class)->group(function () {
     Route::get('pagos/{cedula}', 'historialPagos');
     Route::get('pagos', 'index');
     Route::post('nuevos/{cedula}', 'store');
+     Route::post('eliminar/pagos/{id}', 'destroy');
 });
 
 
