@@ -126,13 +126,12 @@ public function destroy($id)
         ], 404);
     }
 
-    // Eliminar usuario asociado
+
     $usuario = User::where('persona_id', $persona->id)->first();
     if ($usuario) {
         $usuario->delete();
     }
 
-    // Eliminar persona
     $persona->delete();
 
     return response()->json([
