@@ -85,7 +85,7 @@ public function store(Request $request)
     }
 
     try {
-        // Crear la cita
+      
         $cita = Cita::create($request->all());
 
         // Verificar historial anterior
@@ -98,7 +98,7 @@ public function store(Request $request)
             $ultimoHistorial->telefono_paciente === '0000000000' &&
             $ultimoHistorial->estado_cita === 'pendiente';
 
-        // Si el historial es genérico y coincide en fecha y hora, actualízalo
+        // Si el historial es genérico y coincide en fecha y hora
         if ($esGenerico && $ultimoHistorial->fecha_cita === $fecha && $ultimoHistorial->hora_cita === $hora) {
             $ultimoHistorial->update([
                 'nombre_paciente'   => $cita->nombre_paciente,
@@ -109,7 +109,7 @@ public function store(Request $request)
             ]);
             $historial = $ultimoHistorial;
         } else {
-            // Si no, crea uno nuevo
+            
             $historial = Historial::create([
                 'cedula_paciente'         => $cita->cedula_paciente,
                 'nombre_paciente'         => $cita->nombre_paciente,

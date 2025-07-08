@@ -10,7 +10,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 
-Route::get('/', function () {
+Route::get('/hola', function () {
     return response()->json([
         'message' => 'La API está funcionando correctamente'
     ]);
